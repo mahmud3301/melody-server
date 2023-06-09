@@ -30,11 +30,13 @@ async function run() {
     const instructors = client.db("summerCamp").collection("instructors");
     const carts = client.db("summerCamp").collection("carts");
     const users = client.db("summerCamp").collection("users");
-    
-    // user related apis
-    app.post("/users", async (req, res) => {
-      
-    })
+
+    // user related APIs
+    app.post("/user", async (req, res) => {
+      const user = req.body;
+      const result = await users.insertOne(user);
+      res.send(result);
+    });
 
     // classes api
     app.get("/classes", async (req, res) => {
