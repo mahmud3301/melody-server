@@ -32,8 +32,17 @@ async function run() {
     const users = client.db("summerCamp").collection("users");
 
     // user related APIs
+    app.get("/users", async (req, res) => {
+      const result = await users.find({}).toArray();
+      res.send(result);
+    })
+
     app.post("/user", async (req, res) => {
       const user = req.body;
+      const existingUser = await users.findOne({ email: user.email });
+      if (existingUser) {
+        return res.send("User already exists");
+      }
       const result = await users.insertOne(user);
       res.send(result);
     });
