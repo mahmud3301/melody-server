@@ -72,6 +72,17 @@ async function run() {
       }
       next();
     };
+    const verifyInstructor = async (req, res, next) => {
+      const { email } = req.decoded;
+      const query = { email: email };
+      const user = await users.findOne(query);
+      if (user?.role !== "instructor") {
+        return res
+          .status(403)
+          .send({ error: true, message: "forbidden message" });
+      }
+      next();
+    };
 
     // user related APIs
     app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
@@ -83,10 +94,10 @@ async function run() {
       const user = req.body;
       const existingUser = await users.findOne({ email: user.email });
       if (existingUser) {
-        return res.send("User already exists");
+        return res.status(400).json({ error: "User already exists" });
       }
       const result = await users.insertOne(user);
-      res.send(result);
+      res.json(result);
     });
 
     // Admin related api
