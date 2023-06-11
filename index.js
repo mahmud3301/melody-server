@@ -150,7 +150,36 @@ async function run() {
       res.send(result);
     });
 
-    
+    // Update class pending to approved
+    app.put("/classes/:id", async (req, res) => {
+      const { id } = req.params;
+      const { status } = req.query;
+      const filter = { _id: new ObjectId(id) };
+      let updateDoc;
+      if (status == "approved") {
+        updateDoc = {
+          $set: {
+            status: "approved",
+          },
+        };
+        const result = await classes.updateOne(filter, updateDoc);
+        return res.send(result);
+      } else if (status === "deny") {
+        updateDoc = {
+          $set: {
+            status: "deny",
+          },
+        };
+        const result = await classes.updateOne(filter, updateDoc);
+        return res.send(result);
+      }
+    });
+
+    app.post("/classes", verifyJWT, verifyInstructor, async (req, res) => {
+      const data = req.body;
+      const result = await classes.insertOne(data);
+      res.send(result);
+    });
 
     // instructors api
     app.get("/instructors", async (req, res) => {
