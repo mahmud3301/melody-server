@@ -152,6 +152,18 @@ async function run() {
 
     
 
+    // instructors api
+    app.get("/instructors", async (req, res) => {
+      const result = await users.find({ role: "instructor" }).toArray();
+      res.send(result);
+    });
+
+    app.get("/instructors-classes", async (req, res) => {
+      const { email } = req.query;
+      const result = await classes.find({ instructorEmail: email }).toArray();
+      res.send(result);
+    });
+
     // cart related apis
     app.get("/carts", verifyJWT, async (req, res) => {
       const { email } = req.query;
