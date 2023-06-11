@@ -225,52 +225,7 @@ async function run() {
       res.send(result);
     });
 
-    // create payment intent
-    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
-      const { price } = req.body;
-      const amount = parseInt(price * 100);
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
-        currency: "usd",
-        payment_method_types: ["card"],
-      });
-      res.send({
-        clientSecret: paymentIntent.client_secret,
-      });
-    });
-
-    // payment related api
-    app.post("/payments", verifyJWT, async (req, res) => {
-      const payment = req.body;
-      const insertResult = await payments.insertOne(payments);
-
-      const query = {
-        _id: { $in: payments.carts.map((id) => new ObjectId(id)) },
-        // _id: { $in: new ObjectId(payment.cartId) },
-      };
-      const deleteResult = await carts.deleteOne(query);
-
-      res.send({ insertResult, deleteResult });
-    });
-
-    app.get("/admin-stats", verifyJWT, verifyAdmin, async (req, res) => {
-      const users = await users.estimatedDocumentCount();
-      const products = await menu.estimatedDocumentCount();
-      const orders = await payments.estimatedDocumentCount();
-
-      const payments = await payments.find().toArray();
-      const revenue = payments.reduce(
-        (sum, payments) => sum + payments.price,
-        0
-      );
-
-      res.send({
-        revenue,
-        users,
-        products,
-        orders,
-      });
-    });
+    
 
     // classes api
     app.get("/classes", async (req, res) => {
