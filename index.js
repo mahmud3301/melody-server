@@ -1,8 +1,9 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 require("dotenv").config();
 const port = process.env.PORT || 5000;
 
@@ -50,6 +51,7 @@ async function run() {
     const instructors = client.db("summerCamp").collection("instructors");
     const carts = client.db("summerCamp").collection("carts");
     const users = client.db("summerCamp").collection("users");
+    const payments = client.db("summerCamp").collection("payments");
 
     // jwt available for apis
     app.post("/jwt", (req, res) => {
@@ -85,7 +87,7 @@ async function run() {
     };
 
     // user related APIs
-    app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
+    app.get("/users", verifyJWT, async (req, res) => {
       const result = await users.find({}).toArray();
       res.send(result);
     });
@@ -148,17 +150,7 @@ async function run() {
       res.send(result);
     });
 
-    // classes api
-    app.get("/classes", async (req, res) => {
-      const result = await classes.find({}).toArray();
-      res.send(result);
-    });
-
-    // instructors api
-    app.get("/instructors", async (req, res) => {
-      const result = await instructors.find({}).toArray();
-      res.send(result);
-    });
+    
 
     // cart related apis
     app.get("/carts", verifyJWT, async (req, res) => {
@@ -189,6 +181,68 @@ async function run() {
       const { id } = req.params;
       const query = { _id: new ObjectId(id) };
       const result = await carts.deleteOne(query);
+      res.send(result);
+    });
+
+    // create payment intent
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    // payment related api
+    app.post("/payments", verifyJWT, async (req, res) => {
+      const payment = req.body;
+      const insertResult = await payments.insertOne(payments);
+
+      const query = {
+        _id: { $in: payments.carts.map((id) => new ObjectId(id)) },
+        // _id: { $in: new ObjectId(payment.cartId) },
+      };
+      const deleteResult = await carts.deleteOne(query);
+
+      res.send({ insertResult, deleteResult });
+    });
+
+    app.get("/admin-stats", verifyJWT, verifyAdmin, async (req, res) => {
+      const users = await users.estimatedDocumentCount();
+      const products = await menu.estimatedDocumentCount();
+      const orders = await payments.estimatedDocumentCount();
+
+      const payments = await payments.find().toArray();
+      const revenue = payments.reduce(
+        (sum, payments) => sum + payments.price,
+        0
+      );
+
+      res.send({
+        revenue,
+        users,
+        products,
+        orders,
+      });
+    });
+
+    // classes api
+    app.get("/classes", async (req, res) => {
+      const result = await classes.find({}).toArray();
+      res.send(result);
+    });
+
+    // classes api
+    app.get("/approved-classes", async (req, res) => {
+      const query = {
+        status: "approved",
+      };
+      const result = await classes.find(query).toArray();
       res.send(result);
     });
 
