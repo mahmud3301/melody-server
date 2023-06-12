@@ -112,7 +112,7 @@ async function run() {
     });
 
     // Admin related api
-    app.get("/users/admin/:email", verifyJWT, verifyAdmin, async (req, res) => {
+    app.get("/users/admin/:email", verifyJWT,  async (req, res) => {
       const { email } = req.params;
       if (req.decoded.email !== email) {
         res.send({ admin: false });
@@ -208,7 +208,7 @@ async function run() {
       }
     });
 
-    app.post("/classes", verifyJWT, verifyInstructor, async (req, res) => {
+    app.post("/classes", verifyJWT,  async (req, res) => {
       const data = req.body;
       const result = await classes.insertOne(data);
       res.send(result);
@@ -315,10 +315,10 @@ async function run() {
 
     // Payment
     app.get("/taka/:id", verifyJWT, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await carts.findOne(query);
-      res.send(result);
+      // const id = req.params.id;
+      // const query = { _id: new ObjectId(id) };
+      // const result = await carts.findOne(query);
+      // res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
