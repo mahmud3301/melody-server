@@ -3,8 +3,9 @@ const app = express();
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
-const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 require("dotenv").config();
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
+const nodemailer = require("nodemailer");
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -30,6 +31,15 @@ const verifyJWT = (req, res, next) => {
   });
 };
 
+// Nodemailer configuration
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.NODE_MAILER_EMAIL,
+    pass: process.env.NODE_MAILER_PASSWORD,
+  },
+});
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@mahmud.mxmnc58.mongodb.net/classesDB?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -48,10 +58,9 @@ async function run() {
     // Send a ping to confirm a successful connection
 
     const classes = client.db("summerCamp").collection("classes");
-    const instructors = client.db("summerCamp").collection("instructors");
     const carts = client.db("summerCamp").collection("carts");
     const users = client.db("summerCamp").collection("users");
-    const payments = client.db("summerCamp").collection("payments");
+    const payment = client.db("summerCamp").collection("payment");
 
     // jwt available for apis
     app.post("/jwt", (req, res) => {
@@ -103,7 +112,7 @@ async function run() {
     });
 
     // Admin related api
-    app.get("/users/admin/:email", verifyJWT, async (req, res) => {
+    app.get("/users/admin/:email", verifyJWT, verifyAdmin, async (req, res) => {
       const { email } = req.params;
       if (req.decoded.email !== email) {
         res.send({ admin: false });
@@ -144,6 +153,30 @@ async function run() {
       const updateDoc = {
         $set: {
           role: "instructor",
+        },
+      };
+      const result = await users.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // student related api
+    app.get("/users/student/:email", verifyJWT, async (req, res) => {
+      const { email } = req.params;
+      if (req.decoded.email !== email) {
+        res.send({ admin: false });
+      }
+      const query = { email: email };
+      const user = await users.findOne(query);
+      const result = { student: user?.role === "student" };
+      res.send(result);
+    });
+
+    app.patch("/users/student/:id", async (req, res) => {
+      const { id } = req.params;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "student",
         },
       };
       const result = await users.updateOne(filter, updateDoc);
@@ -225,24 +258,66 @@ async function run() {
       res.send(result);
     });
 
-    // create payment intent
-    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
-      
-    });
-
-    
     // classes api
     app.get("/classes", async (req, res) => {
       const result = await classes.find({}).toArray();
       res.send(result);
     });
 
-    // classes api
     app.get("/approved-classes", async (req, res) => {
       const query = {
         status: "approved",
       };
       const result = await classes.find(query).toArray();
+      res.send(result);
+    });
+
+    // feedback
+    app.post("/classes/:id/feedback", async (req, res) => {
+      const { id } = req.params;
+      const { feedback } = req.body;
+      const filter = { _id: ObjectId(id) };
+      const classData = await classes.findOne(filter);
+      const instructorEmail = classData.instructorEmail;
+
+      const mailOptions = {
+        from: process.env.EMAIL,
+        to: instructorEmail,
+        subject: "Feedback from the melody admin about your class",
+        text: feedback,
+      };
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log("Error sending feedback email:", error);
+          res.status(500).send({ error: "Failed to send feedback email" });
+        } else {
+          console.log("Feedback email sent:", info.response);
+          res.send({ message: "Feedback sent successfully" });
+        }
+      });
+    });
+
+    // Create payment intent
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      // const { price } = req.body;
+      // console.log(price);
+      // const amount = parseFloat(price * 100);
+      // const paymentIntent = await stripe.paymentIntents.create({
+      //   amount: amount,
+      //   currency: "usd",
+      //   payment_method_types: ["card"],
+      // });
+      // res.send({
+      //   clientSecret: paymentIntent.client_secret,
+      // });
+    });
+
+    // Payment
+    app.get("/taka/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await carts.findOne(query);
       res.send(result);
     });
 
