@@ -57,10 +57,10 @@ async function run() {
     await client.connect();
     // Send a ping to confirm a successful connection
 
-    const classes = client.db("summerCamp").collection("classes");
-    const carts = client.db("summerCamp").collection("carts");
-    const users = client.db("summerCamp").collection("users");
-    const payment = client.db("summerCamp").collection("payment");
+    const classes = client.db("melody").collection("classes");
+    const carts = client.db("melody").collection("carts");
+    const users = client.db("melody").collection("users");
+    const payment = client.db("melody").collection("payment");
 
     // jwt available for apis
     app.post("/jwt", (req, res) => {
